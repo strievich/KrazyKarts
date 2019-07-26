@@ -23,13 +23,40 @@ void AGoKart::BeginPlay()
 void AGoKart::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-    const FVector Force = GetActorForwardVector() * MaxDrivingForce * Throttle;
+    FVector Force = GetActorForwardVector() * MaxDrivingForce * Throttle;
+
+    Force += GetAirResistance();
+    Force += GetRollingResistance();
 
     Acceleration =  Force / Mass;
     Velocity += Acceleration*DeltaTime;
+
+    UpdateSteering(DeltaTime);
+    UpdateLocomotionFromVelocity(DeltaTime);
+
+}
+
+void AGoKart::UpdateSteering(float DeltaTime)
+{
+    float RotationAngle = MaxDegreesPerSeconds * DeltaTime * SteeringThrow;
+    FQuat RotationDelta(GetActorUpVector(), FMath::DegreesToRadians(RotationAngle));
+
+
+    Velocity = RotationDelta.RotateVector(Velocity);
+
+    AddActorWorldRotation(RotationDelta);
+}
+
+void AGoKart::UpdateLocomotionFromVelocity(float DeltaTime)
+{
     FVector Translation = Velocity * DeltaTime;
 
-    AddActorWorldOffset(Translation);
+    FHitResult HitResult;
+    AddActorWorldOffset(Translation, true, &HitResult);
+    if (HitResult.IsValidBlockingHit())
+    {
+        Velocity = FVector::ZeroVector;
+    }
 }
 
 // Called to bind functionality to input
@@ -38,11 +65,29 @@ void AGoKart::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
 
     PlayerInputComponent->BindAxis("MoveForward", this, &AGoKart::MoveForward);
+    PlayerInputComponent->BindAxis("MoveRight", this, &AGoKart::MoveRight);
 
 }
 
 void AGoKart::MoveForward(float Value)
 {
     Throttle = Value;
+}
+
+void AGoKart::MoveRight(float Value)
+{
+    SteeringThrow = Value;
+}
+
+FVector AGoKart::GetAirResistance()
+{
+    return -Velocity.GetSafeNormal() * Velocity.SizeSquared() * DragCoefficient/100.f;
+}
+
+FVector AGoKart::GetRollingResistance()
+{
+    float AccelerationDueToGravity = -GetWorld()->GetGravityZ()/100.0f;
+    float NormalForce = Mass * AccelerationDueToGravity;
+    return -Velocity.GetSafeNormal()*RollingResistanceCoefficient*NormalForce;
 }
 

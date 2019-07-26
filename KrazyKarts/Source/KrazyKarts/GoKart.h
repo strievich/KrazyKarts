@@ -23,20 +23,37 @@ public:
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
 
+    void UpdateSteering(float DeltaTime);
+
+    void UpdateLocomotionFromVelocity(float DeltaTime);
+
 	// Called to bind functionality to input
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
     void MoveForward(float Value);
+    void MoveRight(float Value);
     UPROPERTY(EditAnywhere)
     float Mass = 1000; //mass of the car (kg)
 
     UPROPERTY(EditAnywhere)
-    float MaxDrivingForce = 1000000;
-    
+    float MaxDrivingForce = 10000000;
+
+    UPROPERTY(EditAnywhere)
+    float MaxDegreesPerSeconds = 100;
+
+    UPROPERTY(EditAnywhere)
+    float DragCoefficient = 16.0f;
+
+    UPROPERTY(EditAnywhere)
+    float RollingResistanceCoefficient = 0.015f;
 private:
+
+    FVector GetAirResistance();
+    FVector GetRollingResistance();
     FVector Velocity;
     FVector Acceleration;
     float Throttle;
+    float SteeringThrow;
     
 
 };
