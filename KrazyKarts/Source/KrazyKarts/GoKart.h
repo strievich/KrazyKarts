@@ -58,9 +58,16 @@ private:
 
     FVector GetAirResistance();
     FVector GetRollingResistance();
-    FVector CalcualtedVelocity = FVector::ZeroVector;
-    FVector CalculatedAcceleration = FVector::ZeroVector;;
-    TOptional<float> ThrottleValue = 0.f;
+    UPROPERTY(Replicated)
+    FVector Velocity = FVector::ZeroVector;
+
+
+    
+    FVector Acceleration = FVector::ZeroVector;;
+
+    UPROPERTY(Replicated)
+    float Throttle = 0.f;
+    UPROPERTY(Replicated)
     float SteeringThrow =0.f;
     
     UPROPERTY(ReplicatedUsing= OnRep_ReplicatedTransform)
