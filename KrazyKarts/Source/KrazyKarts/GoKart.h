@@ -36,10 +36,10 @@ public:
     float Mass = 1000; //mass of the car (kg)
 
     UPROPERTY(EditAnywhere)
-    float MaxDrivingForce = 10000000;
+    float MaxDrivingForce = 10000000; //(???)
 
     UPROPERTY(EditAnywhere)
-    float MaxDegreesPerSeconds = 100;
+    float MinTurningRadius = 10000; //(cm)
 
     UPROPERTY(EditAnywhere)
     float DragCoefficient = 16.0f;
