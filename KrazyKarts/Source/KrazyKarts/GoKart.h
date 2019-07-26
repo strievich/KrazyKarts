@@ -30,8 +30,11 @@ public:
 	// Called to bind functionality to input
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
-    void MoveForward(float Value);
-    void MoveRight(float Value);
+    UFUNCTION(Server, Reliable, WithValidation)
+    void Server_MoveForward(float Value);
+
+    UFUNCTION(Server, Reliable, WithValidation)
+    void Server_MoveRight(float Value);
     UPROPERTY(EditAnywhere)
     float Mass = 1000; //mass of the car (kg)
 
@@ -50,10 +53,10 @@ private:
 
     FVector GetAirResistance();
     FVector GetRollingResistance();
-    FVector Velocity;
-    FVector Acceleration;
-    float Throttle;
-    float SteeringThrow;
+    FVector CalcualtedVelocity = FVector::ZeroVector;
+    FVector CalculatedAcceleration = FVector::ZeroVector;;
+    TOptional<float> ThrottleValue = 0.f;
+    float SteeringThrow =0.f;
     
 
 };

@@ -3,6 +3,7 @@
 
 #include "GoKart.h"
 #include "Components/InputComponent.h"
+#include "DrawDebugHelpers.h"
 
 // Sets default values
 AGoKart::AGoKart()
@@ -23,13 +24,17 @@ void AGoKart::BeginPlay()
 void AGoKart::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-    FVector Force = GetActorForwardVector() * MaxDrivingForce * Throttle;
+    FVector Force = GetActorForwardVector() * MaxDrivingForce * ThrottleValue.Get(0.0f);
+    if (ThrottleValue.GetValue() > 10000.9f)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("Throtle delta too big"));
+    }
 
     Force += GetAirResistance();
     Force += GetRollingResistance();
 
-    Acceleration =  Force / Mass;
-    Velocity += Acceleration*DeltaTime;
+    CalculatedAcceleration =  Force / Mass;
+    CalcualtedVelocity += CalculatedAcceleration*DeltaTime;
 
     UpdateSteering(DeltaTime);
     UpdateLocomotionFromVelocity(DeltaTime);
@@ -38,27 +43,37 @@ void AGoKart::Tick(float DeltaTime)
 
 void AGoKart::UpdateSteering(float DeltaTime)
 {
-    float DeltaLocation = FVector::DotProduct(GetActorForwardVector(), Velocity)  *DeltaTime;
+    float DeltaLocation = FVector::DotProduct(GetActorForwardVector(), CalcualtedVelocity)  *DeltaTime;
 
 
-    float RotationAngle = DeltaLocation / MinTurningRadius * SteeringThrow;
+    float RotationAngle = (DeltaLocation / MinTurningRadius) * SteeringThrow;
     FQuat RotationDelta(GetActorUpVector(), RotationAngle);
 
 
-    Velocity = RotationDelta.RotateVector(Velocity);
-
+    DrawDebugString(GetWorld(), FVector::ZeroVector , *FString::Printf(TEXT("Rotation delta[%s]"), *RotationDelta.ToString()), this,FColor::White,0,true);
+    CalcualtedVelocity = RotationDelta.RotateVector(CalcualtedVelocity);
+//     if (CalcualtedVelocity.X > 100000.9f)
+//     {
+//         UE_LOG(LogTemp, Warning, TEXT("Speed delta too big"));
+//     }
     AddActorWorldRotation(RotationDelta);
 }
 
 void AGoKart::UpdateLocomotionFromVelocity(float DeltaTime)
 {
-    FVector Translation = Velocity * DeltaTime;
+    FVector Translation = CalcualtedVelocity * DeltaTime;
 
+    DrawDebugString(GetWorld(), GetActorUpVector()*50.f, *FString::Printf(TEXT("Transation delta[%s]"), *Translation.ToString()), this, FColor::White, 0, true);
+
+    if (Translation.X > 10000.9f)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("Speed delta too big"));
+    }
     FHitResult HitResult;
     AddActorWorldOffset(Translation, true, &HitResult);
     if (HitResult.IsValidBlockingHit())
     {
-        Velocity = FVector::ZeroVector;
+        CalcualtedVelocity = FVector::ZeroVector;
     }
 }
 
@@ -67,30 +82,58 @@ void AGoKart::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
 
-    PlayerInputComponent->BindAxis("MoveForward", this, &AGoKart::MoveForward);
-    PlayerInputComponent->BindAxis("MoveRight", this, &AGoKart::MoveRight);
+    PlayerInputComponent->BindAxis("MoveForward", this, &AGoKart::Server_MoveForward);
+    PlayerInputComponent->BindAxis("MoveRight", this, &AGoKart::Server_MoveRight);
 
 }
 
-void AGoKart::MoveForward(float Value)
+void AGoKart::Server_MoveForward_Implementation(float Value)
 {
-    Throttle = Value;
+    ThrottleValue = Value;
+    UE_LOG(LogTemp, Warning, TEXT("Throtle = %d"), ThrottleValue.GetValue());
+    if (ThrottleValue.GetValue() > 10000.9f)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("Trottle Value TOOO BIG:  %d"), Value);
+    }
+
 }
 
-void AGoKart::MoveRight(float Value)
+bool AGoKart::Server_MoveForward_Validate(float Value)
+{
+    if(FMath::Abs(Value)>1) 
+    {
+        UE_LOG(LogTemp, Error, TEXT("Server_MoveForward_Validate(float Value) too big"));
+        return false;
+    }
+
+    return true;
+}
+
+void AGoKart::Server_MoveRight_Implementation(float Value)
 {
     SteeringThrow = Value;
 }
 
+bool AGoKart::Server_MoveRight_Validate(float Value)
+{
+    if (FMath::Abs(Value) > 1)
+    {
+        UE_LOG(LogTemp, Error, TEXT("Server_MoveRight_Validate(float Value) too big"));
+        return false;
+    }
+
+    return true;
+}
+
 FVector AGoKart::GetAirResistance()
 {
-    return -Velocity.GetSafeNormal() * Velocity.SizeSquared() * DragCoefficient/100.f;
+    return -CalcualtedVelocity.GetSafeNormal() * CalcualtedVelocity.SizeSquared() * DragCoefficient/100.f;
 }
 
 FVector AGoKart::GetRollingResistance()
 {
     float AccelerationDueToGravity = -GetWorld()->GetGravityZ()/100.0f;
     float NormalForce = Mass * AccelerationDueToGravity;
-    return -Velocity.GetSafeNormal()*RollingResistanceCoefficient*NormalForce;
+    return -CalcualtedVelocity.GetSafeNormal()*RollingResistanceCoefficient*NormalForce;
 }
 
