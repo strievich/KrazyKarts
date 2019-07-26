@@ -23,6 +23,7 @@ public:
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
 
+    FString GetEnumText(ENetRole Role);
     void UpdateSteering(float DeltaTime);
 
     void UpdateLocomotionFromVelocity(float DeltaTime);
@@ -35,6 +36,10 @@ public:
 
     UFUNCTION(Server, Reliable, WithValidation)
     void Server_MoveRight(float Value);
+
+    void MoveForward(float Value);
+    void MoveRight(float Value);
+
     UPROPERTY(EditAnywhere)
     float Mass = 1000; //mass of the car (kg)
 

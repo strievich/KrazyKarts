@@ -39,6 +39,25 @@ void AGoKart::Tick(float DeltaTime)
     UpdateSteering(DeltaTime);
     UpdateLocomotionFromVelocity(DeltaTime);
 
+    DrawDebugString(GetWorld(), FVector(0,0,100), GetEnumText(Role.GetValue()), this, FColor::White, DeltaTime, true);
+}
+
+FString AGoKart::GetEnumText(ENetRole Role)
+{
+    switch (Role)
+    {
+    case ROLE_None:
+        return "None";
+    case ROLE_SimulatedProxy:
+        return "SimulatedProxy";
+    case ROLE_AutonomousProxy:
+        return "AutonomousProxy";
+    case ROLE_Authority:
+        return "Authority";
+    default:
+        return "ERROR";
+    }
+
 }
 
 void AGoKart::UpdateSteering(float DeltaTime)
@@ -50,7 +69,7 @@ void AGoKart::UpdateSteering(float DeltaTime)
     FQuat RotationDelta(GetActorUpVector(), RotationAngle);
 
 
-    DrawDebugString(GetWorld(), FVector::ZeroVector , *FString::Printf(TEXT("Rotation delta[%s]"), *RotationDelta.ToString()), this,FColor::White,0,true);
+    //DrawDebugString(GetWorld(), FVector::ZeroVector , *FString::Printf(TEXT("Rotation delta[%s]"), *RotationDelta.ToString()), this,FColor::White,0,true);
     CalcualtedVelocity = RotationDelta.RotateVector(CalcualtedVelocity);
 //     if (CalcualtedVelocity.X > 100000.9f)
 //     {
@@ -63,7 +82,7 @@ void AGoKart::UpdateLocomotionFromVelocity(float DeltaTime)
 {
     FVector Translation = CalcualtedVelocity * DeltaTime;
 
-    DrawDebugString(GetWorld(), GetActorUpVector()*50.f, *FString::Printf(TEXT("Transation delta[%s]"), *Translation.ToString()), this, FColor::White, 0, true);
+    //DrawDebugString(GetWorld(), GetActorUpVector()*50.f, *FString::Printf(TEXT("Transation delta[%s]"), *Translation.ToString()), this, FColor::White, 0, true);
 
     if (Translation.X > 10000.9f)
     {
@@ -82,9 +101,21 @@ void AGoKart::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
 
-    PlayerInputComponent->BindAxis("MoveForward", this, &AGoKart::Server_MoveForward);
-    PlayerInputComponent->BindAxis("MoveRight", this, &AGoKart::Server_MoveRight);
+    PlayerInputComponent->BindAxis("MoveForward", this, &AGoKart::MoveForward);
+    PlayerInputComponent->BindAxis("MoveRight", this, &AGoKart::MoveRight);
 
+}
+
+void AGoKart::MoveForward(float Value)
+{
+    ThrottleValue = Value;
+    Server_MoveForward(Value);
+}
+
+void AGoKart::MoveRight(float Value)
+{
+    SteeringThrow = Value;
+    Server_MoveRight(Value);
 }
 
 void AGoKart::Server_MoveForward_Implementation(float Value)
