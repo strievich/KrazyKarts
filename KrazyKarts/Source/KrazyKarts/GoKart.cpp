@@ -19,6 +19,10 @@ void AGoKart::BeginPlay()
 {
 	Super::BeginPlay();
 	
+    if (HasAuthority())
+    {
+        NetUpdateFrequency = 1;
+    }
 }
 
 // Called every frame
@@ -42,15 +46,9 @@ void AGoKart::Tick(float DeltaTime)
 
     if (HasAuthority())
     {
-        ReplicatedLocation = GetActorLocation();
-        ReplicatedRotation = GetActorRotation();
+        ReplicatedTransform = GetActorTransform();
     }
-    else
-    {
-        SetActorLocation(ReplicatedLocation);
-        SetActorRotation(ReplicatedRotation);
-    }
-
+    
 
     DrawDebugString(GetWorld(), FVector(0,0,100), GetEnumText(Role.GetValue()), this, FColor::White, DeltaTime, true);
 }
@@ -126,7 +124,6 @@ void AGoKart::MoveRight(float Value)
 void AGoKart::Server_MoveForward_Implementation(float Value)
 {
     ThrottleValue = Value;
-    UE_LOG(LogTemp, Warning, TEXT("Throtle = %d"), ThrottleValue.GetValue());
     if (ThrottleValue.GetValue() > 10000.9f)
     {
         UE_LOG(LogTemp, Warning, TEXT("Trottle Value TOOO BIG:  %d"), Value);
@@ -174,9 +171,14 @@ FVector AGoKart::GetRollingResistance()
 }
 
 
+void AGoKart::OnRep_ReplicatedTransform()
+{
+    UE_LOG(LogTemp, Warning, TEXT("Replicated TransformLocation"));
+    SetActorTransform(ReplicatedTransform);
+}
+
 void AGoKart::GetLifetimeReplicatedProps(TArray<FLifetimeProperty> & OutLifetimeProps) const
 {
     Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-    DOREPLIFETIME(AGoKart, ReplicatedLocation);
-    DOREPLIFETIME(AGoKart, ReplicatedRotation);
+    DOREPLIFETIME(AGoKart, ReplicatedTransform);
 }
