@@ -47,7 +47,7 @@ public:
     float MaxDrivingForce = 10000000; //(???)
 
     UPROPERTY(EditAnywhere)
-    float MinTurningRadius = 10000; //(cm)
+    float MinTurningRadius = 1000; //(cm)
 
     UPROPERTY(EditAnywhere)
     float DragCoefficient = 16.0f;
@@ -63,5 +63,11 @@ private:
     TOptional<float> ThrottleValue = 0.f;
     float SteeringThrow =0.f;
     
+    UPROPERTY(Replicated)
+    FVector ReplicatedLocation;
+
+    UPROPERTY(Replicated)
+    FRotator ReplicatedRotation;
+
 
 };

@@ -4,6 +4,7 @@
 #include "GoKart.h"
 #include "Components/InputComponent.h"
 #include "DrawDebugHelpers.h"
+#include "UnrealNetwork.h"
 
 // Sets default values
 AGoKart::AGoKart()
@@ -39,12 +40,24 @@ void AGoKart::Tick(float DeltaTime)
     UpdateSteering(DeltaTime);
     UpdateLocomotionFromVelocity(DeltaTime);
 
+    if (HasAuthority())
+    {
+        ReplicatedLocation = GetActorLocation();
+        ReplicatedRotation = GetActorRotation();
+    }
+    else
+    {
+        SetActorLocation(ReplicatedLocation);
+        SetActorRotation(ReplicatedRotation);
+    }
+
+
     DrawDebugString(GetWorld(), FVector(0,0,100), GetEnumText(Role.GetValue()), this, FColor::White, DeltaTime, true);
 }
 
-FString AGoKart::GetEnumText(ENetRole Role)
+FString AGoKart::GetEnumText(ENetRole InRole)
 {
-    switch (Role)
+    switch (InRole)
     {
     case ROLE_None:
         return "None";
@@ -68,21 +81,13 @@ void AGoKart::UpdateSteering(float DeltaTime)
     float RotationAngle = (DeltaLocation / MinTurningRadius) * SteeringThrow;
     FQuat RotationDelta(GetActorUpVector(), RotationAngle);
 
-
-    //DrawDebugString(GetWorld(), FVector::ZeroVector , *FString::Printf(TEXT("Rotation delta[%s]"), *RotationDelta.ToString()), this,FColor::White,0,true);
     CalcualtedVelocity = RotationDelta.RotateVector(CalcualtedVelocity);
-//     if (CalcualtedVelocity.X > 100000.9f)
-//     {
-//         UE_LOG(LogTemp, Warning, TEXT("Speed delta too big"));
-//     }
     AddActorWorldRotation(RotationDelta);
 }
 
 void AGoKart::UpdateLocomotionFromVelocity(float DeltaTime)
 {
     FVector Translation = CalcualtedVelocity * DeltaTime;
-
-    //DrawDebugString(GetWorld(), GetActorUpVector()*50.f, *FString::Printf(TEXT("Transation delta[%s]"), *Translation.ToString()), this, FColor::White, 0, true);
 
     if (Translation.X > 10000.9f)
     {
@@ -168,3 +173,10 @@ FVector AGoKart::GetRollingResistance()
     return -CalcualtedVelocity.GetSafeNormal()*RollingResistanceCoefficient*NormalForce;
 }
 
+
+void AGoKart::GetLifetimeReplicatedProps(TArray<FLifetimeProperty> & OutLifetimeProps) const
+{
+    Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+    DOREPLIFETIME(AGoKart, ReplicatedLocation);
+    DOREPLIFETIME(AGoKart, ReplicatedRotation);
+}
