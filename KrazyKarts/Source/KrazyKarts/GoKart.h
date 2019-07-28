@@ -6,6 +6,32 @@
 #include "GameFramework/Pawn.h"
 #include "GoKart.generated.h"
 
+USTRUCT()
+struct FGoCartMove
+{
+	GENERATED_BODY()
+
+	UPROPERTY()
+	float Throttle;
+	UPROPERTY()
+	float SteeringThrow;
+
+	UPROPERTY()
+	float DeltaTime;
+};
+USTRUCT()
+struct FGoCartState
+{
+	GENERATED_BODY()
+
+	UPROPERTY()
+	FTransform Transform;
+	UPROPERTY()
+	FVector Velocity;
+	UPROPERTY()
+	FGoCartMove LastMove;
+};
+
 UCLASS()
 class KRAZYKARTS_API AGoKart : public APawn
 {
