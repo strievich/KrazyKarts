@@ -4,43 +4,11 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
+#include "GoKartMovementReplicator.h"
 #include "GoKartMovementComponent.generated.h"
 
 
-
-
 FString GetEnumText(ENetRole InRole);
-
-
-
-
-USTRUCT()
-struct FGoCartMove
-{
-    GENERATED_BODY()
-
-    UPROPERTY()
-    float Throttle;
-    UPROPERTY()
-    float SteeringThrow;
-
-    UPROPERTY()
-    float DeltaTime;
-    UPROPERTY()
-    float Time;
-};
-USTRUCT()
-struct FGoCartState
-{
-    GENERATED_BODY()
-
-    UPROPERTY()
-    FTransform Transform;
-    UPROPERTY()
-    FVector Velocity;
-    UPROPERTY()
-    FGoCartMove LastMove;
-};
 
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
 class KRAZYKARTS_API UGoKartMovementComponent : public UActorComponent

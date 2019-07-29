@@ -5,7 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Pawn.h"
 #include "GoKartMovementComponent.h"
-
+#include "GoKartMovementReplicator.h"
 #include "GoKart.generated.h"
 
 
@@ -31,26 +31,18 @@ public:
 	// Called to bind functionality to input
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
-    UFUNCTION(Server, Reliable, WithValidation)
-    void Server_SendMove(FGoCartMove Value);
-
+    
     void MoveForward(float Value);
     void MoveRight(float Value);
 
    
 private:
 
-    UFUNCTION()
-    void OnRep_ReplicatedServerState();
-
-    UPROPERTY(ReplicatedUsing = OnRep_ReplicatedServerState)
-    FGoCartState ServerState;
-
-    TArray<FGoCartMove> UnacknowledgedMoves;
-
-    void ClearAcknowledgedMoves(FGoCartMove LastMove);
-
-    UPROPERTY(EditAnywhere)
+    
+    UPROPERTY(VisibleAnywhere)
     UGoKartMovementComponent* MovementComponent;
+
+    UPROPERTY(VisibleAnywhere)
+    UGoKartMovementReplicator* MovementReplicator;
 
 };

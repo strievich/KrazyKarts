@@ -14,6 +14,7 @@ AGoKart::AGoKart()
 	PrimaryActorTick.bCanEverTick = true;
 
     MovementComponent = CreateDefaultSubobject<UGoKartMovementComponent>(TEXT("MovementComponent"));
+    MovementReplicator = CreateDefaultSubobject<UGoKartMovementReplicator>(TEXT("MovementReplicator"));
 }
 
 // Called when the game starts or when spawned
@@ -32,25 +33,7 @@ void AGoKart::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-    if (MovementComponent == nullptr) return;
-
-    if (ROLE_AutonomousProxy == Role)
-    {
-        FGoCartMove Move = MovementComponent->CreateMove(DeltaTime);
-        MovementComponent->SimulateMove(Move);
-        UnacknowledgedMoves.Add(Move);
-        Server_SendMove(Move);
-    }
-    //we are the server and in control of the pawn
-    if (Role == ROLE_Authority && GetRemoteRole() == ROLE_SimulatedProxy)
-    {
-        FGoCartMove Move = MovementComponent->CreateMove(DeltaTime);
-        Server_SendMove(Move);
-    }
-    if (ROLE_SimulatedProxy == Role)
-    {
-        MovementComponent->SimulateMove(ServerState.LastMove);
-    }
+    
 }
 
 
@@ -76,51 +59,3 @@ void AGoKart::MoveRight(float Value)
     ensure(FMath::Abs(Value) <= 1.0f);
 }
 
-void AGoKart::Server_SendMove_Implementation(FGoCartMove Move)
-{
-    MovementComponent->SimulateMove(Move);
-
-    ServerState.LastMove = Move;
-    ServerState.Transform = GetActorTransform();
-    ServerState.Velocity = MovementComponent->GetVelocity();
-}
-
-bool AGoKart::Server_SendMove_Validate(FGoCartMove Value)
-{
-
-    return true;
-}
-
-void AGoKart::OnRep_ReplicatedServerState()
-{
-    UE_LOG(LogTemp, Warning, TEXT("Replicated TransformLocation"));
-    SetActorTransform(ServerState.Transform);
-    MovementComponent->SetVelocity(ServerState.Velocity);
-
-    ClearAcknowledgedMoves(ServerState.LastMove);
-
-    for (const FGoCartMove& Move : UnacknowledgedMoves)
-    {
-        MovementComponent->SimulateMove(Move);
-    }
-}
-
-void AGoKart::ClearAcknowledgedMoves(FGoCartMove LastMove)
-{
-    TArray<FGoCartMove> NewMoves;
-
-    for (const FGoCartMove& Move : UnacknowledgedMoves)
-    {
-        if (Move.Time > LastMove.Time)
-        {
-            NewMoves.Add(Move);
-        }
-    }
-    UnacknowledgedMoves = NewMoves;
-}
-
-void AGoKart::GetLifetimeReplicatedProps(TArray<FLifetimeProperty> & OutLifetimeProps) const
-{
-    Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-    DOREPLIFETIME(AGoKart, ServerState);
-}
