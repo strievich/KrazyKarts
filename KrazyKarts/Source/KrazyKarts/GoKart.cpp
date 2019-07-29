@@ -5,6 +5,7 @@
 #include "Components/InputComponent.h"
 #include "DrawDebugHelpers.h"
 #include "UnrealNetwork.h"
+#include "GameFramework/GameStateBase.h"
 
 // Sets default values
 AGoKart::AGoKart()
@@ -30,16 +31,34 @@ void AGoKart::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-    if (IsLocallyControlled())
+    if (ROLE_AutonomousProxy == Role)
     {
-        FGoCartMove Move;
-        Move.DeltaTime = DeltaTime;
-        Move.SteeringThrow = SteeringThrow;
-        Move.Throttle = Throttle;
-        //TODO:set time
-        Server_SendMove(Move);
+        FGoCartMove Move = CreateMove(DeltaTime);
         SimulateMove(Move);
+        UnacknowledgedMoves.Add(Move);
+        Server_SendMove(Move);
     }
+    //we are the server and in control of the pawn
+    if (Role == ROLE_Authority && GetRemoteRole() == ROLE_SimulatedProxy)
+    {
+        FGoCartMove Move = CreateMove(DeltaTime);
+        Server_SendMove(Move);
+    }
+    if (ROLE_SimulatedProxy == Role)
+    {
+        SimulateMove(ServerState.LastMove);
+    }
+
+}
+
+FGoCartMove AGoKart::CreateMove(float DeltaTime)
+{
+    FGoCartMove Move;
+    Move.DeltaTime = DeltaTime;
+    Move.SteeringThrow = SteeringThrow;
+    Move.Throttle = Throttle;
+    Move.Time = GetWorld()->GetGameState()->GetServerWorldTimeSeconds();
+    return Move;
 }
 
 void AGoKart::SimulateMove(FGoCartMove Move)
@@ -159,6 +178,27 @@ void AGoKart::OnRep_ReplicatedServerState()
     UE_LOG(LogTemp, Warning, TEXT("Replicated TransformLocation"));
     SetActorTransform(ServerState.Transform);
     Velocity = ServerState.Velocity;
+
+    ClearAcknowledgedMoves(ServerState.LastMove);
+
+    for (const FGoCartMove& Move : UnacknowledgedMoves)
+    {
+        SimulateMove(Move);
+    }
+}
+
+void AGoKart::ClearAcknowledgedMoves(FGoCartMove LastMove)
+{
+    TArray<FGoCartMove> NewMoves;
+
+    for (const FGoCartMove& Move : UnacknowledgedMoves)
+    {
+        if (Move.Time > LastMove.Time)
+        {
+            NewMoves.Add(Move);
+        }
+    }
+    UnacknowledgedMoves = NewMoves;
 }
 
 void AGoKart::GetLifetimeReplicatedProps(TArray<FLifetimeProperty> & OutLifetimeProps) const

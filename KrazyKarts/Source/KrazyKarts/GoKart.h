@@ -51,6 +51,8 @@ public:
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
 
+    FGoCartMove CreateMove(float DeltaTime);
+
     void SimulateMove(FGoCartMove Move);
 
 
@@ -102,5 +104,8 @@ private:
     UPROPERTY(ReplicatedUsing = OnRep_ReplicatedServerState)
     FGoCartState ServerState;
 
+    TArray<FGoCartMove> UnacknowledgedMoves;
+
+    void ClearAcknowledgedMoves(FGoCartMove LastMove);
 
 };
