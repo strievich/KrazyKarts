@@ -18,6 +18,8 @@ struct FGoCartMove
 
 	UPROPERTY()
 	float DeltaTime;
+    UPROPERTY()
+    float Time;
 };
 USTRUCT()
 struct FGoCartState
@@ -49,8 +51,11 @@ public:
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
 
+    void SimulateMove(FGoCartMove Move);
+
+
     FString GetEnumText(ENetRole Role);
-    void UpdateSteering(float DeltaTime);
+    void ApplyRotation(float DeltaTime, float SteeringThrow);
 
     void UpdateLocomotionFromVelocity(float DeltaTime);
 
@@ -58,10 +63,7 @@ public:
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
     UFUNCTION(Server, Reliable, WithValidation)
-    void Server_MoveForward(float Value);
-
-    UFUNCTION(Server, Reliable, WithValidation)
-    void Server_MoveRight(float Value);
+    void Server_SendMove(FGoCartMove Value);
 
     void MoveForward(float Value);
     void MoveRight(float Value);
@@ -84,26 +86,21 @@ private:
 
     FVector GetAirResistance();
     FVector GetRollingResistance();
-    UPROPERTY(Replicated)
+
+
     FVector Velocity = FVector::ZeroVector;
-
-
-    
+        
     FVector Acceleration = FVector::ZeroVector;;
-
-    UPROPERTY(Replicated)
+    
     float Throttle = 0.f;
-    UPROPERTY(Replicated)
     float SteeringThrow =0.f;
     
-    UPROPERTY(ReplicatedUsing= OnRep_ReplicatedTransform)
-    FTransform ReplicatedTransform;
-
+    
     UFUNCTION()
-    void OnRep_ReplicatedTransform();
+    void OnRep_ReplicatedServerState();
 
-    UPROPERTY(Replicated)
-    FRotator ReplicatedRotation;
+    UPROPERTY(ReplicatedUsing = OnRep_ReplicatedServerState)
+    FGoCartState ServerState;
 
 
 };

@@ -29,28 +29,33 @@ void AGoKart::BeginPlay()
 void AGoKart::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-    FVector Force = GetActorForwardVector() * MaxDrivingForce * Throttle;
-    if (Throttle > 10000.9f)
+
+    if (IsLocallyControlled())
     {
-        UE_LOG(LogTemp, Warning, TEXT("Throtle delta too big"));
+        FGoCartMove Move;
+        Move.DeltaTime = DeltaTime;
+        Move.SteeringThrow = SteeringThrow;
+        Move.Throttle = Throttle;
+        //TODO:set time
+        Server_SendMove(Move);
+        SimulateMove(Move);
     }
+}
+
+void AGoKart::SimulateMove(FGoCartMove Move)
+{
+    FVector Force = GetActorForwardVector() * MaxDrivingForce * Move.Throttle;
 
     Force += GetAirResistance();
     Force += GetRollingResistance();
 
-    Acceleration =  Force / Mass;
-    Velocity += Acceleration*DeltaTime;
+    Acceleration = Force / Mass;
+    Velocity += Acceleration * Move.DeltaTime;
 
-    UpdateSteering(DeltaTime);
-    UpdateLocomotionFromVelocity(DeltaTime);
+    ApplyRotation(Move.DeltaTime, Move.SteeringThrow);
+    UpdateLocomotionFromVelocity(Move.DeltaTime);
 
-    if (HasAuthority())
-    {
-        ReplicatedTransform = GetActorTransform();
-    }
-    
-
-    DrawDebugString(GetWorld(), FVector(0,0,100), GetEnumText(Role.GetValue()), this, FColor::White, DeltaTime, true);
+    DrawDebugString(GetWorld(), FVector(0, 0, 100), GetEnumText(Role.GetValue()), this, FColor::White, Move.DeltaTime, true);
 }
 
 FString AGoKart::GetEnumText(ENetRole InRole)
@@ -71,12 +76,12 @@ FString AGoKart::GetEnumText(ENetRole InRole)
 
 }
 
-void AGoKart::UpdateSteering(float DeltaTime)
+void AGoKart::ApplyRotation(float DeltaTime, float InSteeringThrow)
 {
     float DeltaLocation = FVector::DotProduct(GetActorForwardVector(), Velocity)  *DeltaTime;
 
 
-    float RotationAngle = (DeltaLocation / MinTurningRadius) * SteeringThrow;
+    float RotationAngle = (DeltaLocation / MinTurningRadius) * InSteeringThrow;
     FQuat RotationDelta(GetActorUpVector(), RotationAngle);
 
     Velocity = RotationDelta.RotateVector(Velocity);
@@ -112,51 +117,30 @@ void AGoKart::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 void AGoKart::MoveForward(float Value)
 {
     Throttle = Value;
-    Server_MoveForward(Value);
+    ensure(FMath::Abs(Value) <= 1.0f);
 }
 
 void AGoKart::MoveRight(float Value)
 {
     SteeringThrow = Value;
-    Server_MoveRight(Value);
+    ensure(FMath::Abs(Value) <= 1.0f);
 }
 
-void AGoKart::Server_MoveForward_Implementation(float Value)
+void AGoKart::Server_SendMove_Implementation(FGoCartMove Move)
 {
-    Throttle = Value;
-    if (Throttle > 10000.9f)
-    {
-        UE_LOG(LogTemp, Warning, TEXT("Trottle Value TOOO BIG:  %d"), Value);
-    }
+    SimulateMove(Move);
 
+    ServerState.LastMove = Move;
+    ServerState.Transform = GetActorTransform();
+    ServerState.Velocity = Velocity;
 }
 
-bool AGoKart::Server_MoveForward_Validate(float Value)
+bool AGoKart::Server_SendMove_Validate(FGoCartMove Value)
 {
-    if(FMath::Abs(Value)>1) 
-    {
-        UE_LOG(LogTemp, Error, TEXT("Server_MoveForward_Validate(float Value) too big"));
-        return false;
-    }
 
     return true;
 }
 
-void AGoKart::Server_MoveRight_Implementation(float Value)
-{
-    SteeringThrow = Value;
-}
-
-bool AGoKart::Server_MoveRight_Validate(float Value)
-{
-    if (FMath::Abs(Value) > 1)
-    {
-        UE_LOG(LogTemp, Error, TEXT("Server_MoveRight_Validate(float Value) too big"));
-        return false;
-    }
-
-    return true;
-}
 
 FVector AGoKart::GetAirResistance()
 {
@@ -170,17 +154,15 @@ FVector AGoKart::GetRollingResistance()
     return -Velocity.GetSafeNormal()*RollingResistanceCoefficient*NormalForce;
 }
 
-void AGoKart::OnRep_ReplicatedTransform()
+void AGoKart::OnRep_ReplicatedServerState()
 {
     UE_LOG(LogTemp, Warning, TEXT("Replicated TransformLocation"));
-    SetActorTransform(ReplicatedTransform);
+    SetActorTransform(ServerState.Transform);
+    Velocity = ServerState.Velocity;
 }
 
 void AGoKart::GetLifetimeReplicatedProps(TArray<FLifetimeProperty> & OutLifetimeProps) const
 {
     Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-    DOREPLIFETIME(AGoKart, ReplicatedTransform);
-    DOREPLIFETIME(AGoKart, Velocity);
-    DOREPLIFETIME(AGoKart, Throttle);
-    DOREPLIFETIME(AGoKart, SteeringThrow);
+    DOREPLIFETIME(AGoKart, ServerState);
 }
