@@ -32,14 +32,14 @@ public:
     void SetAcceleration(FVector InAcceleration) { Acceleration = InAcceleration; }
     void SetThrottle(float InThrottle) { Throttle = InThrottle; }
     void SetSteeringThrow(float InSteeringThrow) { SteeringThrow = InSteeringThrow; }
-
-    FGoCartMove CreateMove(float DeltaTime);
     void SimulateMove(FGoCartMove Move);
+
+    FGoCartMove GetLastMove();
 private:
     
 
-    
-    
+    FGoCartMove CreateMove(float DeltaTime);
+
     void ApplyRotation(float DeltaTime, float SteeringThrow);
 
     void UpdateLocomotionFromVelocity(float DeltaTime);
@@ -52,6 +52,7 @@ private:
 
     FVector Acceleration = FVector::ZeroVector;
 
+    FGoCartMove LastMove;
 
     float Throttle = 0.f;
     float SteeringThrow = 0.f;
