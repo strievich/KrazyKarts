@@ -83,6 +83,8 @@ void UGoKartMovementReplicator::SimulatedProxy_OnRep_ServerState()
     ClientTimeBetweenLastUpdate = ClientTimeSinceUpdate;
     ClientTimeSinceUpdate = 0;
     ClientStartTrasform = GetOwner()->GetActorTransform();
+    if (MovementComponent == nullptr) return;
+    ClientStartVelocity = MovementComponent->GetVelocity();
 }
 
 void UGoKartMovementReplicator::AutonomousProxy_OnRep_ServerState()
@@ -128,12 +130,19 @@ void UGoKartMovementReplicator::ClearAcknowledgedMoves(FGoCartMove LastMove)
 void UGoKartMovementReplicator::ClientTick(float DeltaTime)
 {
     ClientTimeSinceUpdate += DeltaTime;
+    if (MovementComponent == nullptr) return;
+
     if (ClientTimeBetweenLastUpdate < KINDA_SMALL_NUMBER) return;
 
     float LerpRatio = ClientTimeSinceUpdate / ClientTimeBetweenLastUpdate;
-    FVector TargetLocation = ServerState.Transform.GetLocation();
-    FVector StartLocation = ClientStartTrasform.GetLocation();
-    FVector NewLocation = FMath::LerpStable(StartLocation, TargetLocation, LerpRatio);
+
+    FHermitCubicSpline Spline = CreateSpline();
+
+    FVector NewLocation = Spline.InterpolateLocation(LerpRatio);
+    FVector NewDerivative = Spline.InterpolateDerivative(LerpRatio);
+
+    FVector NewVelocity = NewDerivative / ClientTimeBetweenLastUpdate;
+    MovementComponent->SetVelocity(NewVelocity);
 
     FQuat TargetRotatation = ServerState.Transform.GetRotation();
     FQuat StartRotation = ClientStartTrasform.GetRotation();
@@ -142,6 +151,16 @@ void UGoKartMovementReplicator::ClientTick(float DeltaTime)
 
     GetOwner()->SetActorLocation(NewLocation);
     GetOwner()->SetActorRotation(NewRotation);
+}
+
+FHermitCubicSpline UGoKartMovementReplicator::CreateSpline()
+{
+    FHermitCubicSpline Spline;
+    Spline.TargetLocation = ServerState.Transform.GetLocation();
+    Spline.StartLocation = ClientStartTrasform.GetLocation();
+    Spline.StartDerivative = ClientStartVelocity * ClientTimeBetweenLastUpdate;
+    Spline.TargetDerivative = ServerState.Velocity*ClientTimeBetweenLastUpdate;
+    return Spline;
 }
 
 void UGoKartMovementReplicator::GetLifetimeReplicatedProps(TArray<FLifetimeProperty> & OutLifetimeProps) const
