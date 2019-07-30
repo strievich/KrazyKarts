@@ -35,14 +35,14 @@ public:
     void MoveForward(float Value);
     void MoveRight(float Value);
 
-   
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+    UGoKartMovementComponent* MovementComponent;
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+    UGoKartMovementReplicator* MovementReplicator;
 private:
 
     
-    UPROPERTY(VisibleAnywhere)
-    UGoKartMovementComponent* MovementComponent;
-
-    UPROPERTY(VisibleAnywhere)
-    UGoKartMovementReplicator* MovementReplicator;
+    
 
 };

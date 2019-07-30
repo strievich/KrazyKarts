@@ -96,6 +96,10 @@ private:
 
     UPROPERTY()
     UGoKartMovementComponent* MovementComponent;
+    UPROPERTY(VisibleAnywhere)
+    USceneComponent* MeshOffsetRoot;
+    UFUNCTION(BlueprintCallable)
+    void SetMeshOffsetRoot(USceneComponent* Root);
 
     void UpdateServerState(const FGoCartMove& Move);
 
