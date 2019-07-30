@@ -61,17 +61,26 @@ private:
 
     void ClearAcknowledgedMoves(FGoCartMove LastMove);
 
+    void ClientTick(float DeltaTime);
+
     UFUNCTION(Server, Reliable, WithValidation)
     void Server_SendMove(FGoCartMove Value);
 
-    UPROPERTY(ReplicatedUsing = OnRep_ReplicatedServerState)
+    UPROPERTY(ReplicatedUsing = OnRep_ServerState)
     FGoCartState ServerState;
 
     UFUNCTION()
-    void OnRep_ReplicatedServerState();
+    void OnRep_ServerState();
+    void SimulatedProxy_OnRep_ServerState();
+    void AutonomousProxy_OnRep_ServerState();
 
     UPROPERTY()
     UGoKartMovementComponent* MovementComponent;
 
     void UpdateServerState(const FGoCartMove& Move);
+
+    float ClientTimeSinceUpdate;
+    float ClientTimeBetweenLastUpdate;
+    FVector ClientStartLocation;
+
 };

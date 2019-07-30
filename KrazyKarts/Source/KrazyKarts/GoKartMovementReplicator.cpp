@@ -48,7 +48,7 @@ void UGoKartMovementReplicator::TickComponent(float DeltaTime, ELevelTick TickTy
     }
     if (ROLE_SimulatedProxy == GetOwnerRole())
     {
-        MovementComponent->SimulateMove(ServerState.LastMove);
+        ClientTick(DeltaTime);
     }
 }
 void UGoKartMovementReplicator::Server_SendMove_Implementation(FGoCartMove Move)
@@ -63,7 +63,29 @@ bool UGoKartMovementReplicator::Server_SendMove_Validate(FGoCartMove Value)
     return true;
 }
 
-void UGoKartMovementReplicator::OnRep_ReplicatedServerState()
+void UGoKartMovementReplicator::OnRep_ServerState()
+{
+    switch (GetOwnerRole())
+    {
+    case ROLE_AutonomousProxy:
+        AutonomousProxy_OnRep_ServerState();
+        break;
+    case ROLE_SimulatedProxy:
+        SimulatedProxy_OnRep_ServerState();
+        break;
+    default:
+        break;
+    }
+}
+
+void UGoKartMovementReplicator::SimulatedProxy_OnRep_ServerState()
+{
+    ClientTimeBetweenLastUpdate = ClientTimeSinceUpdate;
+    ClientTimeSinceUpdate = 0;
+    ClientStartLocation = GetOwner()->GetActorLocation();
+}
+
+void UGoKartMovementReplicator::AutonomousProxy_OnRep_ServerState()
 {
     UE_LOG(LogTemp, Warning, TEXT("Replicated TransformLocation"));
     if (MovementComponent == nullptr)
@@ -101,6 +123,19 @@ void UGoKartMovementReplicator::ClearAcknowledgedMoves(FGoCartMove LastMove)
         }
     }
     UnacknowledgedMoves = NewMoves;
+}
+
+void UGoKartMovementReplicator::ClientTick(float DeltaTime)
+{
+    ClientTimeSinceUpdate += DeltaTime;
+    if (ClientTimeBetweenLastUpdate < KINDA_SMALL_NUMBER) return;
+
+    FVector TargetLocation = ServerState.Transform.GetLocation();
+    float LerpRatio = ClientTimeSinceUpdate / ClientTimeBetweenLastUpdate;
+    FVector StartLocation = ClientStartLocation;
+    FVector NewLocation = FMath::LerpStable(StartLocation, TargetLocation, LerpRatio);
+
+    GetOwner()->SetActorLocation(NewLocation);
 }
 
 void UGoKartMovementReplicator::GetLifetimeReplicatedProps(TArray<FLifetimeProperty> & OutLifetimeProps) const
